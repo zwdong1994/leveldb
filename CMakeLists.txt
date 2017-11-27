@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 ADD_DEFINITIONS(-g -W -Wall -lrt -lcrypto -lpthread  -D_GLIBCXX_USE_CXX11_ABI=0 -fpermissive)
 
-include_directories(./include /usr/include)
+include_directories(./include /usr/include ./)
 include_directories(db/ include/leveldb helpers/ port/ table/ util/)
 link_libraries("/usr/lib/x86_64-linux-gnu/librt.so")
 link_libraries("/usr/lib/x86_64-linux-gnu/libcrypto.a")
@@ -84,4 +84,4 @@ set(SOURCE_FILES main.cpp
         util/testharness.cc
         util/testutil.cc
         )
-add_executable(EaD ${SOURCE_FILES})
+add_executable(main ${SOURCE_FILES})
