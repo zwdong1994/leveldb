@@ -83,5 +83,5 @@ set(SOURCE_FILES main.cpp
         util/status.cc
         util/testharness.cc
         util/testutil.cc
-        )
+        test/test_put_get.cc)
 add_executable(main ${SOURCE_FILES})
