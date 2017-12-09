@@ -11,6 +11,7 @@
 #include "leveldb/db.h"
 #include "leveldb/env.h"
 #include "leveldb/write_batch.h"
+#include <fcntl.h>
 #include "port/port.h"
 #include "util/crc32c.h"
 #include "util/histogram.h"
@@ -113,6 +114,15 @@ static bool FLAGS_reuse_logs = false;
 
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
+
+// Output workload flag.
+static bool FLAGS_output_workload = false;
+
+// The workload file name.
+static char* WORKLOAD_name = NULL;
+
+// The output workload's file description.
+FILE *fd_output = NULL;
 
 namespace leveldb {
 
@@ -741,7 +751,7 @@ class Benchmark {
     DoWrite(thread, false);
   }
 
-  void DoWrite(ThreadState* thread, bool seq) {
+  void  DoWrite(ThreadState* thread, bool seq) {
     if (num_ != FLAGS_num) {
       char msg[100];
       snprintf(msg, sizeof(msg), "(%d ops)", num_);
@@ -758,6 +768,8 @@ class Benchmark {
         const int k = seq ? i+j : (thread->rand.Next() % FLAGS_num);
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
+        if (FLAGS_output_workload)
+          fprintf(fd_output, "%s,w\n", key);
         batch.Put(key, gen.Generate(value_size_));
         bytes += value_size_ + strlen(key);
         thread->stats.FinishedSingleOp();
@@ -805,6 +817,8 @@ class Benchmark {
       char key[100];
       const int k = thread->rand.Next() % FLAGS_num;
       snprintf(key, sizeof(key), "%016d", k);
+      if(FLAGS_output_workload)
+        fprintf(fd_output, "%s,r\n", key);
       if (db_->Get(options, key, &value).ok()) {
         found++;
       }
@@ -966,6 +980,9 @@ int main(int argc, char** argv) {
     char junk;
     if (leveldb::Slice(argv[i]).starts_with("--benchmarks=")) {
       FLAGS_benchmarks = argv[i] + strlen("--benchmarks=");
+    } else if(leveldb::Slice(argv[i]).starts_with("--workload_name=")) {
+      WORKLOAD_name = argv[i] + strlen("--workload_name=");
+      FLAGS_output_workload = true;
     } else if (sscanf(argv[i], "--compression_ratio=%lf%c", &d, &junk) == 1) {
       FLAGS_compression_ratio = d;
     } else if (sscanf(argv[i], "--histogram=%d%c", &n, &junk) == 1 &&
@@ -1006,7 +1023,13 @@ int main(int argc, char** argv) {
   }
 
   leveldb::g_env = leveldb::Env::Default();
-
+  if (FLAGS_output_workload){
+    fd_output = fopen(WORKLOAD_name, "wb");
+    if(fd_output == NULL){
+      fprintf(stdout, "Error to open the workload output file.");
+      exit(-1);
+    }
+  }
   // Choose a location for the test database if none given with --db=<path>
   if (FLAGS_db == NULL) {
       leveldb::g_env->GetTestDirectory(&default_db_path);
